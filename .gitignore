@@ -1,0 +1,72 @@
+# Flutter/Dart/Pub related
+.dart_tool/
+.packages
+.pub-cache/
+build/
+flutter_*.png
+
+# iOS
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/.symlinks/
+ios/Pods/
+ios/Runner.xcworkspace/
+ios/DerivedData/
+ios/.dart_tool/
+*.xcworkspace
+*.xcuserstate
+*.xcuserdata
+
+# Android
+android/.gradle/
+android/app/build/
+android/local.properties
+android/.idea/
+
+# VS Code
+.vscode/
+
+# IntelliJ/Android Studio
+.idea/
+*.iml
+
+# macOS
+macos/Flutter/Flutter.framework
+macos/Flutter/Flutter.podspec
+macos/.symlinks/
+macos/Pods/
+macos/build/
+macos/.dart_tool/
+*.xcworkspace
+*.xcuserstate
+*.xcuserdata
+
+# Web
+web/.dart_tool/
+web/build/
+
+# Windows
+windows/.dart_tool/
+windows/build/
+
+# Linux
+linux/.dart_tool/
+linux/build/
+
+# Other
+*.log
+*.lock
+*.tmp
+*.swp
+*.DS_Store
+*.class
+*.jar
+*.apk
+*.ipa
+*.flutter-plugins
+*.flutter-plugins-dependencies
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Firebase
+firebase.json
