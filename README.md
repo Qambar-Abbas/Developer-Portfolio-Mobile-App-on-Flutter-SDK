@@ -2,7 +2,7 @@
 
 A sleek Flutter portfolio app showcasing a developer’s profile with beautiful animations, particle background, and glassmorphism UI. Includes sections like About Me, Skills, Projects, Experience, Education, and Contact. Features scroll-aware effects, smooth transitions, and responsive design. Ideal for personal branding or digital resumes.
 
-## 📸 Screenshots
+## Screenshots
 
 | Home | About Me | Skills |
 |------|----------|--------|
