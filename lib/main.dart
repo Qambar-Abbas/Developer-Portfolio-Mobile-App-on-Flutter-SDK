@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:package_info_plus/package_info_plus.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
+import 'dart:convert';
 
-void main() {
-  runApp(MyApp());
-}
+void main() => runApp(const MyApp());
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -23,7 +26,7 @@ class MyApp extends StatelessWidget {
 }
 
 class DeveloperProfilePage extends StatefulWidget {
-  const DeveloperProfilePage({super.key});
+  DeveloperProfilePage({super.key});
 
   @override
   _DeveloperProfilePageState createState() => _DeveloperProfilePageState();
@@ -31,70 +34,153 @@ class DeveloperProfilePage extends StatefulWidget {
 
 class _DeveloperProfilePageState extends State<DeveloperProfilePage>
     with TickerProviderStateMixin {
-  late AnimationController _headerController;
-  late AnimationController _contentController;
-  late AnimationController _floatingController;
-  late Animation<double> _headerAnimation;
-  late Animation<double> _contentAnimation;
-  late Animation<double> _floatingAnimation;
+  // Animation controllers
+  late final AnimationController _headerController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 1200),
+  )..forward();
+  late final AnimationController _contentController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 800),
+  )..forward();
+  late final AnimationController _floatingController = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 2000),
+  )..repeat(reverse: true);
+
+  late final Animation<double> _headerAnimation = CurvedAnimation(
+    parent: _headerController,
+    curve: Curves.easeOutBack,
+  );
+  late final Animation<double> _contentAnimation = CurvedAnimation(
+    parent: _contentController,
+    curve: Curves.easeOutQuart,
+  );
+  late final Animation<double> _floatingAnimation = CurvedAnimation(
+    parent: _floatingController,
+    curve: Curves.easeInOut,
+  );
 
   final ScrollController _scrollController = ScrollController();
   bool _isHeaderCollapsed = false;
+  String _appVersion = '';
+  bool _isEditing = false;
+  final String _password = 'qambar';
+
+  // Profile data stored in JSON format
+  Map<String, dynamic> _profileData = {};
 
   @override
   void initState() {
     super.initState();
-
-    _headerController = AnimationController(
-      duration: Duration(milliseconds: 1200),
-      vsync: this,
-    );
-
-    _contentController = AnimationController(
-      duration: Duration(milliseconds: 800),
-      vsync: this,
-    );
-
-    _floatingController = AnimationController(
-      duration: Duration(milliseconds: 2000),
-      vsync: this,
-    );
-
-    _headerAnimation = CurvedAnimation(
-      parent: _headerController,
-      curve: Curves.easeOutBack,
-    );
-
-    _contentAnimation = CurvedAnimation(
-      parent: _contentController,
-      curve: Curves.easeOutQuart,
-    );
-
-    _floatingAnimation = CurvedAnimation(
-      parent: _floatingController,
-      curve: Curves.easeInOut,
-    );
-
     _scrollController.addListener(_scrollListener);
-
-    // Start animations
-    _headerController.forward();
-    Future.delayed(Duration(milliseconds: 300), () {
-      _contentController.forward();
-    });
-    _floatingController.repeat(reverse: true);
+    _loadAppVersion();
+    _initializeProfileData();
+    _loadSavedData();
   }
 
   void _scrollListener() {
-    if (_scrollController.offset > 200 && !_isHeaderCollapsed) {
+    final collapsed = _scrollController.offset > 200;
+    if (collapsed != _isHeaderCollapsed) {
+      setState(() => _isHeaderCollapsed = collapsed);
+    }
+  }
+
+  Future<void> _loadAppVersion() async {
+    final info = await PackageInfo.fromPlatform();
+    setState(() {
+      _appVersion = 'Version ${info.version}';
+    });
+  }
+
+  void _initializeProfileData() {
+    _profileData = {
+      'name': 'Qambar Abbas',
+      'role': 'Senior Flutter Developer',
+      'location': 'New Delhi, India',
+      'image': 'https://avatars.githubusercontent.com/u/168618726?v=4',
+      'about': 'Passionate Flutter developer with 5+ years of experience creating beautiful, performant mobile applications.',
+      'tags': ['Mobile Development', 'UI/UX Design', 'Team Leadership', 'Agile Methodology'],
+      'skills': [
+        {'name': 'Flutter', 'level': 0.95},
+        {'name': 'Dart', 'level': 0.90},
+        {'name': 'Firebase', 'level': 0.85},
+        {'name': 'React Native', 'level': 0.75},
+        {'name': 'Node.js', 'level': 0.80},
+        {'name': 'Python', 'level': 0.70},
+      ],
+      'experience': [
+        {
+          'title': 'Mobile App Developer',
+          'company': 'DefineDigitals Pvt Ltd',
+          'period': '2025 - Current',
+          'description': 'Developed and maintained cross-platform mobile applications using Flutter and React Native.'
+        },
+        {
+          'title': 'Frontend Intern',
+          'company': 'Draconic Technology Pvt Ltd',
+          'period': '2023 - 2024',
+          'description': 'Started career building responsive web applications and learning mobile development.'
+        }
+      ],
+      'projects': [
+        {
+          'name': 'Nuevadesk CRM',
+          'description': 'CRM for managing customer relationships',
+          'tech': ['Flutter', 'REST', 'Insta360']
+        },
+        {
+          'name': 'Eat-It',
+          'description': 'Food suggestion with voting and family sharing',
+          'tech': ['Flutter', 'Dart', 'Firebase']
+        },
+        {
+          'name': 'MediCare Pro',
+          'description': 'Healthcare management system for doctors',
+          'tech': ['Flutter', 'Python', 'AWS']
+        }
+      ],
+      'education': [
+        {
+          'degree': 'Bachelor of Computer Applications',
+          'institution': 'Noida International University',
+          'period': '2022 - 2025',
+          'details': ''
+        },
+        {
+          'degree': 'Flutter Development Certification',
+          'institution': 'Google Developers',
+          'period': '2023',
+          'details': 'Advanced Flutter concepts and best practices'
+        }
+      ],
+      'contact': [
+        {'type': 'Email', 'value': 'qambarofficial313@gmail.com'},
+        {'type': 'Phone', 'value': '8510842558'},
+        {'type': 'Website', 'value': 'Qambar-Abbas.github.io'},
+        {'type': 'Github', 'value': 'github.com/Qambar-Abbas'}
+      ],
+      'footer': {
+        'mainText': "Let's Build Something Amazing Together",
+        'copyright': '© 2024 Qambar Abbas. All rights reserved.'
+      }
+    };
+  }
+
+  Future<void> _loadSavedData() async {
+    final prefs = await SharedPreferences.getInstance();
+    final jsonData = prefs.getString('profileData');
+
+    if (jsonData != null) {
       setState(() {
-        _isHeaderCollapsed = true;
-      });
-    } else if (_scrollController.offset <= 200 && _isHeaderCollapsed) {
-      setState(() {
-        _isHeaderCollapsed = false;
+        _profileData = jsonDecode(jsonData);
       });
     }
+  }
+
+  Future<void> _saveAllData() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('profileData', jsonEncode(_profileData));
   }
 
   @override
@@ -106,175 +192,250 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage>
     super.dispose();
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: Color(0xFF0A0E27),
-      body: CustomScrollView(
-        controller: _scrollController,
-        slivers: [
-          _buildSliverAppBar(),
-          SliverToBoxAdapter(
-            child: AnimatedBuilder(
-              animation: _contentAnimation,
-              builder: (context, child) {
-                return Transform.translate(
-                  offset: Offset(0, 50 * (1 - _contentAnimation.value)),
-                  child: Opacity(
-                    opacity: _contentAnimation.value,
-                    child: Column(
-                      children: [
-                        _buildAboutSection(),
-                        _buildSkillsSection(),
-                        _buildExperienceSection(),
-                        _buildProjectsSection(),
-                        _buildEducationSection(),
-                        _buildContactSection(),
-                        _buildFooter(),
-                      ],
-                    ),
-                  ),
-                );
-              },
+  Future<void> _promptPassword() async {
+    String? input;
+    await showDialog(
+      context: context,
+      builder: (_) => Theme(
+        data: Theme.of(context).copyWith(
+          dialogTheme: DialogThemeData(
+            backgroundColor: const Color(0xFF0A0E27),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: Colors.blue.withOpacity(0.5), width: 1),
             ),
           ),
-        ],
+        ),
+        child: AlertDialog(
+          title: const Text(
+            'Enter Password',
+            style: TextStyle(color: Colors.white),
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              TextField(
+                autofocus: true,
+                obscureText: true,
+                style: const TextStyle(color: Colors.white),
+                onChanged: (v) => input = v,
+                decoration: InputDecoration(
+                  hintText: 'Password',
+                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                  enabledBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.blue.withOpacity(0.5)),
+                  ),
+                  focusedBorder: UnderlineInputBorder(
+                    borderSide: BorderSide(color: Colors.blue),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                '🔒 Hint: If you don\'t know the password, check the app description on Google Play Store.',
+                style: TextStyle(fontSize: 13, color: Colors.grey),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+              onPressed: () {
+                if (input == _password) {
+                  setState(() => _isEditing = true);
+                  Navigator.pop(context);
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Wrong password')),
+                  );
+                }
+              },
+              child: const Text('OK'),
+            ),
+          ],
+        ),
       ),
-      floatingActionButton: _buildFloatingActions(),
     );
   }
 
-  Widget _buildSliverAppBar() {
-    return SliverAppBar(
-      expandedHeight: 400,
-      floating: false,
-      pinned: true,
-      backgroundColor: Colors.transparent,
-      flexibleSpace: FlexibleSpaceBar(
-        background: AnimatedBuilder(
-          animation: _headerAnimation,
-          builder: (context, child) {
-            return Stack(
-              children: [
-                // Animated background
-                Container(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        Color(0xFF667eea),
-                        Color(0xFF764ba2),
-                        Color(0xFF6B73FF),
-                      ],
-                      stops: [0.0, 0.5, 1.0],
-                    ),
-                  ),
+  void _save() {
+    setState(() => _isEditing = false);
+    _saveAllData(); // Save to local storage
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Profile saved successfully!'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+  Future<void> _editSimpleField(
+      String fieldKey,
+      String title,
+      bool isMultiline,
+      ) async {
+    String? value = _profileData[fieldKey];
+    TextEditingController controller = TextEditingController(text: value);
+
+    await showDialog(
+      context: context,
+      builder: (_) => Theme(
+        data: Theme.of(context).copyWith(
+          dialogTheme: DialogThemeData(
+            backgroundColor: const Color(0xFF0A0E27),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: Colors.blue.withOpacity(0.5), width: 1),
+            ),
+          ),
+        ),
+        child: AlertDialog(
+          title: Text(title, style: const TextStyle(color: Colors.white)),
+          content: TextField(
+            controller: controller,
+            autofocus: true,
+            maxLines: isMultiline ? null : 1,
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Enter $title',
+              hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+              enabledBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.blue.withOpacity(0.5)),
+              ),
+              focusedBorder: UnderlineInputBorder(
+                borderSide: BorderSide(color: Colors.blue),
+              ),
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text(
+                'Cancel',
+                style: TextStyle(color: Colors.white),
+              ),
+            ),
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                // Floating particles effect
-                ...List.generate(20, (index) {
-                  return AnimatedBuilder(
-                    animation: _floatingAnimation,
-                    builder: (context, child) {
-                      return Positioned(
-                        left:
-                            (index * 37.0) % MediaQuery.of(context).size.width,
-                        top:
-                            50 +
-                            (index * 23.0) % 300 +
-                            (20 * _floatingAnimation.value),
-                        child: Container(
-                          width: 4 + (index % 3) * 2,
-                          height: 4 + (index % 3) * 2,
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.3),
-                            shape: BoxShape.circle,
-                          ),
+              ),
+              onPressed: () {
+                setState(() => _profileData[fieldKey] = controller.text);
+                Navigator.pop(context);
+              },
+              child: const Text('Update'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _editJsonField(
+      String sectionKey,
+      String title,
+      ) async {
+    String jsonText = jsonEncode(_profileData[sectionKey]);
+    bool hasError = false;
+
+    await showDialog(
+      context: context,
+      builder: (_) => Theme(
+        data: Theme.of(context).copyWith(
+          dialogTheme: DialogThemeData(
+            backgroundColor: const Color(0xFF0A0E27),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+              side: BorderSide(color: Colors.blue.withOpacity(0.5), width: 1),
+            ),
+          ),
+        ),
+        child: StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Edit $title', style: const TextStyle(color: Colors.white)),
+              content: Container(
+                width: MediaQuery.of(context).size.width * 0.8,
+                height: MediaQuery.of(context).size.height * 0.6,
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.blue.withOpacity(0.3)),
+                ),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: TextEditingController(text: jsonText),
+                        maxLines: null,
+                        style: TextStyle(
+                            color: hasError ? Colors.red : Colors.white,
+                            fontFamily: 'monospace',
+                            fontSize: 14
                         ),
-                      );
-                    },
-                  );
-                }),
-                // Profile content
-                Center(
-                  child: Transform.scale(
-                    scale: _headerAnimation.value,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        // Profile picture with glow effect
-                        Container(
-                          width: 120,
-                          height: 120,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.blue.withOpacity(0.5),
-                                blurRadius: 20,
-                                spreadRadius: 5,
-                              ),
-                            ],
-                          ),
-                          child: CircleAvatar(
-                            radius: 60,
-                            backgroundColor: Colors.white,
-                            child: CircleAvatar(
-                              radius: 58,
-                              backgroundImage: NetworkImage(
-                                '''https://avatars.githubusercontent.com/u/168618726?v=4''',
-                              ),
-                            ),
-                          ),
+                        decoration: const InputDecoration(
+                          border: InputBorder.none,
+                          hintText: 'Edit JSON data...',
+                          hintStyle: TextStyle(color: Colors.grey),
                         ),
-                        SizedBox(height: 20),
-                        // Name with typewriter effect
-                        Text(
-                          'Qambar Abbas',
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.white,
-                            shadows: [
-                              Shadow(
-                                color: Colors.black.withOpacity(0.3),
-                                offset: Offset(2, 2),
-                                blurRadius: 4,
-                              ),
-                            ],
-                          ),
-                        ),
-                        SizedBox(height: 8),
-                        Text(
-                          'Senior Flutter Developer',
-                          style: TextStyle(
-                            fontSize: 18,
-                            color: Colors.white.withOpacity(0.9),
-                            fontWeight: FontWeight.w300,
-                          ),
-                        ),
-                        SizedBox(height: 12),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(
-                              Icons.location_on,
-                              color: Colors.white70,
-                              size: 16,
-                            ),
-                            SizedBox(width: 4),
-                            Text(
-                              'New Delhi, India',
-                              style: TextStyle(
-                                color: Colors.white70,
-                                fontSize: 14,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                        onChanged: (value) => jsonText = value,
+                      ),
+                    ),
+                    if (hasError)
+                      Text(
+                        'Invalid JSON format!',
+                        style: TextStyle(color: Colors.red, fontSize: 14),
+                      ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Tip: Use proper JSON syntax. Maintain the structure.',
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Cancel', style: TextStyle(color: Colors.white)),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20),
                     ),
                   ),
+                  onPressed: () {
+                    try {
+                      final parsed = jsonDecode(jsonText);
+                      setState(() {
+                        _profileData[sectionKey] = parsed;
+                        hasError = false;
+                      });
+                      Navigator.pop(context);
+                    } catch (e) {
+                      setState(() => hasError = true);
+                    }
+                  },
+                  child: const Text('Update'),
                 ),
               ],
             );
@@ -284,74 +445,286 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage>
     );
   }
 
-  Widget _buildAboutSection() {
-    return Container(
-      margin: EdgeInsets.all(20),
-      padding: EdgeInsets.all(24),
-      decoration: _glassmorphismDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle('About Me', Icons.person),
-          SizedBox(height: 16),
-          Text(
-            'Passionate Flutter developer with 5+ years of experience creating beautiful, performant mobile applications. I specialize in cross-platform development, state management, and creating delightful user experiences that users love.',
-            style: TextStyle(
-              color: Colors.white.withOpacity(0.8),
-              fontSize: 16,
-              height: 1.6,
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF0A0E27),
+      body: CustomScrollView(
+        controller: _scrollController,
+        slivers: [
+          SliverAppBar(
+            expandedHeight: 400,
+            pinned: true,
+            backgroundColor: Colors.transparent,
+            flexibleSpace: FlexibleSpaceBar(
+              background: AnimatedBuilder(
+                animation: _headerAnimation,
+                builder: (_, __) => Stack(
+                  children: [
+                    Container(
+                      decoration: const BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                          colors: [
+                            Color(0xFF667eea),
+                            Color(0xFF764ba2),
+                            Color(0xFF6B73FF),
+                          ],
+                        ),
+                      ),
+                    ),
+                    ...List.generate(20, (i) {
+                      return AnimatedBuilder(
+                        animation: _floatingAnimation,
+                        builder: (_, __) => Positioned(
+                          left: (i * 37) % MediaQuery.of(context).size.width,
+                          top:
+                          50 +
+                              (i * 23) % 300 +
+                              20 * _floatingAnimation.value,
+                          child: Container(
+                            width: 4 + (i % 3) * 2,
+                            height: 4 + (i % 3) * 2,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.3),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    Center(
+                      child: Transform.scale(
+                        scale: _headerAnimation.value,
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            GestureDetector(
+                              onTap: () => _isEditing
+                                  ? _editSimpleField('image', 'Image URL', false)
+                                  : null,
+                              child: Container(
+                                width: 120,
+                                height: 120,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.blue.withOpacity(0.5),
+                                      blurRadius: 20,
+                                      spreadRadius: 5,
+                                    ),
+                                  ],
+                                ),
+                                child: CircleAvatar(
+                                  radius: 60,
+                                  backgroundColor: Colors.white,
+                                  backgroundImage: NetworkImage(
+                                    _profileData['image'],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            GestureDetector(
+                              onTap: _isEditing
+                                  ? () => _editSimpleField('name', 'Name', false)
+                                  : null,
+                              child: Text(
+                                _profileData['name'],
+                                style: const TextStyle(
+                                  fontSize: 32,
+                                  fontWeight: FontWeight.bold,
+                                  color: Colors.white,
+                                  shadows: [
+                                    Shadow(
+                                      color: Colors.black45,
+                                      offset: Offset(2, 2),
+                                      blurRadius: 4,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            GestureDetector(
+                              onTap: _isEditing
+                                  ? () => _editSimpleField('role', 'Role', false)
+                                  : null,
+                              child: Text(
+                                _profileData['role'],
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  color: Colors.white70,
+                                  fontWeight: FontWeight.w300,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                const Icon(
+                                  Icons.location_on,
+                                  color: Colors.white70,
+                                  size: 16,
+                                ),
+                                const SizedBox(width: 4),
+                                GestureDetector(
+                                  onTap: _isEditing
+                                      ? () => _editSimpleField('location', 'Location', false)
+                                      : null,
+                                  child: Text(
+                                    _profileData['location'],
+                                    style: const TextStyle(
+                                      color: Colors.white70,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
-          SizedBox(height: 20),
-          Wrap(
-            spacing: 12,
-            runSpacing: 8,
-            children: [
-              _buildTag('Mobile Development'),
-              _buildTag('UI/UX Design'),
-              _buildTag('Team Leadership'),
-              _buildTag('Agile Methodology'),
-            ],
+          SliverToBoxAdapter(
+            child: AnimatedBuilder(
+              animation: _contentAnimation,
+              builder: (_, __) => Transform.translate(
+                offset: Offset(0, 50 * (1 - _contentAnimation.value)),
+                child: Opacity(
+                  opacity: _contentAnimation.value,
+                  child: Column(
+                    children: [
+                      _buildAboutSection(),
+                      _buildSkillsSection(),
+                      _buildExperienceSection(),
+                      _buildProjectsSection(),
+                      _buildEducationSection(),
+                      _buildContactSection(),
+                      _buildFooter(),
+                    ],
+                  ),
+                ),
+              ),
+            ),
           ),
         ],
       ),
+      floatingActionButton: _buildFloatingActions(),
+    );
+  }
+
+  Widget _buildAboutSection() {
+    return Stack(
+      children: [
+        Container(
+          margin: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
+          decoration: _glassmorphismDecoration(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _sectionTitle('About Me', Icons.person),
+              const SizedBox(height: 16),
+              GestureDetector(
+                onTap: _isEditing
+                    ? () => _editSimpleField('about', 'About Me', true)
+                    : null,
+                child: Text(
+                  _profileData['about'],
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 16,
+                    height: 1.6,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                children: (_profileData['tags'] as List).map(
+                      (tag) => GestureDetector(
+                    onTap: _isEditing ? () => _editJsonField('tags', 'Tags') : null,
+                    child: _buildTag(tag),
+                  ),
+                )
+                    .toList(),
+              ),
+            ],
+          ),
+        ),
+        if (_isEditing)
+          Positioned(
+            top: 10,
+            right: 10,
+            child: IconButton(
+              icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+              onPressed: () => _editSimpleField('about', 'About Me', true),
+            ),
+          ),
+      ],
     );
   }
 
   Widget _buildSkillsSection() {
-    final skills = [
-      {'name': 'Flutter', 'level': 0.95, 'color': Colors.blue},
-      {'name': 'Dart', 'level': 0.90, 'color': Colors.teal},
-      {'name': 'Firebase', 'level': 0.85, 'color': Colors.orange},
-      {'name': 'React Native', 'level': 0.75, 'color': Colors.cyan},
-      {'name': 'Node.js', 'level': 0.80, 'color': Colors.green},
-      {'name': 'Python', 'level': 0.70, 'color': Colors.yellow},
-    ];
-
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: EdgeInsets.all(24),
-      decoration: _glassmorphismDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle('Skills & Expertise', Icons.code),
-          SizedBox(height: 20),
-          ...skills.map(
-            (skill) => _buildSkillBar(
-              skill['name'] as String,
-              skill['level'] as double,
-              skill['color'] as Color,
+    return Stack(
+      children: [
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.all(24),
+          decoration: _glassmorphismDecoration(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _sectionTitle('Skills & Expertise', Icons.code),
+              const SizedBox(height: 20),
+              ...(_profileData['skills'] as List).asMap().entries.map(
+                    (entry) => _buildSkillBar(
+                  entry.value['name'],
+                  entry.value['level'],
+                  _getColorForIndex(entry.key),
+                ),
+              ),
+            ],
+          ),
+        ),
+        if (_isEditing)
+          Positioned(
+            top: 10,
+            right: 10,
+            child: IconButton(
+              icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+              onPressed: () => _editJsonField('skills', 'Skills & Expertise'),
             ),
           ),
-        ],
-      ),
+      ],
     );
+  }
+
+  Color _getColorForIndex(int index) {
+    List<Color> colors = [
+      Colors.blue,
+      Colors.teal,
+      Colors.orange,
+      Colors.cyan,
+      Colors.green,
+      Colors.yellow,
+    ];
+    return colors[index % colors.length];
   }
 
   Widget _buildSkillBar(String skill, double level, Color color) {
     return Container(
-      margin: EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -360,7 +733,7 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage>
             children: [
               Text(
                 skill,
-                style: TextStyle(
+                style: const TextStyle(
                   color: Colors.white,
                   fontSize: 16,
                   fontWeight: FontWeight.w500,
@@ -368,11 +741,11 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage>
               ),
               Text(
                 '${(level * 100).toInt()}%',
-                style: TextStyle(color: Colors.white70, fontSize: 14),
+                style: const TextStyle(color: Colors.white70, fontSize: 14),
               ),
             ],
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Container(
             height: 6,
             decoration: BoxDecoration(
@@ -405,52 +778,44 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage>
   }
 
   Widget _buildExperienceSection() {
-    final experiences = [
-      // {
-      //   'title': 'Senior Flutter Developer',
-      //   'company': 'TechCorp Solutions',
-      //   'period': '2022 - Present',
-      //   'description':
-      //       'Lead mobile development team, architected scalable Flutter applications serving 100K+ users.',
-      //   'icon': Icons.work,
-      // },
-      {
-        'title': 'Mobile App Developer',
-        'company': 'DefineDigitals Pvt Ltd',
-        'period': '2025 - Current',
-        'description':
-            'Developed and maintained cross-platform mobile applications using Flutter and React Native.',
-        'icon': Icons.phone_android,
-      },
-      {
-        'title': 'Technical Intern',
-        'company': 'DefineDigitals Pvt Ltd',
-        'period': '2023 - 2024',
-        'description':
-            'Started career building responsive web applications and learning mobile development.',
-        'icon': Icons.computer,
-      },
-    ];
-
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: EdgeInsets.all(24),
-      decoration: _glassmorphismDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle('Experience', Icons.timeline),
-          SizedBox(height: 20),
-          ...experiences.map((exp) => _buildExperienceCard(exp)).toList(),
-        ],
-      ),
+    return Stack(
+      children: [
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.all(24),
+          decoration: _glassmorphismDecoration(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _sectionTitle('Experience', Icons.timeline),
+              const SizedBox(height: 20),
+              ...(_profileData['experience'] as List).map((exp) => _buildExperienceCard(exp)).toList(),
+            ],
+          ),
+        ),
+        if (_isEditing)
+          Positioned(
+            top: 10,
+            right: 10,
+            child: IconButton(
+              icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+              onPressed: () => _editJsonField('experience', 'Experience'),
+            ),
+          ),
+      ],
     );
+  }
+
+  IconData _getIconForExperience(String title) {
+    if (title.contains('Intern')) return Icons.school;
+    if (title.contains('Developer')) return Icons.code;
+    return Icons.work;
   }
 
   Widget _buildExperienceCard(Map<String, dynamic> exp) {
     return Container(
-      margin: EdgeInsets.only(bottom: 20),
-      padding: EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
@@ -463,42 +828,42 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage>
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              gradient: LinearGradient(colors: [Colors.blue, Colors.purple]),
+              gradient: const LinearGradient(colors: [Colors.blue, Colors.purple]),
               borderRadius: BorderRadius.circular(12),
             ),
-            child: Icon(exp['icon'], color: Colors.white, size: 24),
+            child: Icon(_getIconForExperience(exp['title']), color: Colors.white, size: 24),
           ),
-          SizedBox(width: 16),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   exp['title'],
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white,
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   exp['company'],
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.blue,
                     fontSize: 16,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
                   exp['period'],
-                  style: TextStyle(color: Colors.white60, fontSize: 14),
+                  style: const TextStyle(color: Colors.white60, fontSize: 14),
                 ),
-                SizedBox(height: 12),
+                const SizedBox(height: 12),
                 Text(
                   exp['description'],
-                  style: TextStyle(
+                  style: const TextStyle(
                     color: Colors.white70,
                     fontSize: 14,
                     height: 1.5,
@@ -513,94 +878,88 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage>
   }
 
   Widget _buildProjectsSection() {
-    final projects = [
-      {
-        'name': 'Nuevadesk CRM',
-        'description': 'CRM for managing customer relationships',
-        'tech': ['Flutter', 'REST', 'Insta360'],
-        'color': Colors.green,
-      },
-      {
-        'name': 'Eat-It',
-        'description': 'Food sugesstion with voting and family sharing',
-        'tech': ['Flutter', 'Dart', 'Firebase'],
-        'color': Colors.orange,
-      },
-      {
-        'name': 'MediCare Pro',
-        'description': 'Healthcare management system for doctors',
-        'tech': ['Flutter', 'Python', 'AWS'],
-        'color': Colors.red,
-      },
-    ];
-
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: EdgeInsets.all(24),
-      decoration: _glassmorphismDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle('Featured Projects', Icons.folder),
-          SizedBox(height: 20),
-          ...projects.map((project) => _buildProjectCard(project)).toList(),
-        ],
-      ),
+    return Stack(
+      children: [
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.all(24),
+          decoration: _glassmorphismDecoration(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _sectionTitle('Featured Projects', Icons.folder),
+              const SizedBox(height: 20),
+              ...(_profileData['projects'] as List).asMap().entries.map(
+                    (entry) => _buildProjectCard(entry.value, entry.key),
+              ),
+            ],
+          ),
+        ),
+        if (_isEditing)
+          Positioned(
+            top: 10,
+            right: 10,
+            child: IconButton(
+              icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+              onPressed: () => _editJsonField('projects', 'Projects'),
+            ),
+          ),
+      ],
     );
   }
 
-  Widget _buildProjectCard(Map<String, dynamic> project) {
+  Widget _buildProjectCard(Map<String, dynamic> project, int index) {
+    Color color = _getColorForIndex(index);
     return Container(
-      margin: EdgeInsets.only(bottom: 16),
-      padding: EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [
-            project['color'].withOpacity(0.1),
-            project['color'].withOpacity(0.05),
+            color.withOpacity(0.1),
+            color.withOpacity(0.05),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: project['color'].withOpacity(0.3)),
+        border: Border.all(color: color.withOpacity(0.3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             project['name'],
-            style: TextStyle(
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: 8),
+          const SizedBox(height: 8),
           Text(
             project['description'],
-            style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
+            style: const TextStyle(color: Colors.white70, fontSize: 14, height: 1.4),
           ),
-          SizedBox(height: 12),
+          const SizedBox(height: 12),
           Wrap(
             spacing: 8,
             runSpacing: 6,
-            children: (project['tech'] as List<String>)
-                .map(
+            children: (project['tech'] as List).map(
                   (tech) => Container(
-                    padding: EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: project['color'].withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Text(
-                      tech,
-                      style: TextStyle(
-                        color: project['color'],
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: color.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  tech,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
-                )
+                ),
+              ),
+            )
                 .toList(),
           ),
         ],
@@ -609,42 +968,38 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage>
   }
 
   Widget _buildEducationSection() {
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: EdgeInsets.all(24),
-      decoration: _glassmorphismDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle('Education', Icons.school),
-          SizedBox(height: 20),
-          _buildEducationCard(
-            'Bachelor of Computer Applications',
-            'Noida International University',
-            '2022 - 2025',
-            // 'Graduated Magna Cum Laude • GPA: 3.8/4.0',
-            '',
+    return Stack(
+      children: [
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.all(24),
+          decoration: _glassmorphismDecoration(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _sectionTitle('Education', Icons.school),
+              const SizedBox(height: 20),
+              ...(_profileData['education'] as List).map((edu) => _buildEducationCard(edu)).toList(),
+            ],
           ),
-          SizedBox(height: 16),
-          _buildEducationCard(
-            'Flutter Development Certification',
-            'Google Developers',
-            '2023',
-            'Advanced Flutter concepts and best practices',
+        ),
+        if (_isEditing)
+          Positioned(
+            top: 10,
+            right: 10,
+            child: IconButton(
+              icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+              onPressed: () => _editJsonField('education', 'Education'),
+            ),
           ),
-        ],
-      ),
+      ],
     );
   }
 
-  Widget _buildEducationCard(
-    String degree,
-    String institution,
-    String period,
-    String details,
-  ) {
+  Widget _buildEducationCard(Map<String, dynamic> edu) {
     return Container(
-      padding: EdgeInsets.all(16),
+      margin: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white.withOpacity(0.05),
         borderRadius: BorderRadius.circular(12),
@@ -654,28 +1009,31 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            degree,
-            style: TextStyle(
+            edu['degree'],
+            style: const TextStyle(
               color: Colors.white,
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(height: 4),
+          const SizedBox(height: 4),
           Text(
-            institution,
-            style: TextStyle(
+            edu['institution'],
+            style: const TextStyle(
               color: Colors.blue,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
           ),
-          SizedBox(height: 4),
-          Text(period, style: TextStyle(color: Colors.white60, fontSize: 12)),
-          SizedBox(height: 8),
+          const SizedBox(height: 4),
           Text(
-            details,
-            style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+            edu['period'],
+            style: const TextStyle(color: Colors.white60, fontSize: 12),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            edu['details'],
+            style: const TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
           ),
         ],
       ),
@@ -683,128 +1041,287 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage>
   }
 
   Widget _buildContactSection() {
-    final contacts = [
-      {
-        'icon': Icons.email,
-        'label': 'qambarofficial313@gmail.com',
-        'color': Colors.red,
-      },
-      {'icon': Icons.phone, 'label': '+91 85108 42558', 'color': Colors.green},
-      {
-        'icon': Icons.language,
-        'label': 'qambarofficial.github.io',
-        'color': Colors.blue,
-      },
-      {
-        'icon': Icons.code,
-        'label': 'github.com/qambarofficial',
-        'color': Colors.purple,
-      },
-    ];
-
-    return Container(
-      margin: EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      padding: EdgeInsets.all(24),
-      decoration: _glassmorphismDecoration(),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sectionTitle('Contact & Social', Icons.connect_without_contact),
-          SizedBox(height: 20),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 3,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
-            itemCount: contacts.length,
-            itemBuilder: (context, index) {
-              final contact = contacts[index];
-              return _buildContactCard(contact);
-            },
+    return Stack(
+      children: [
+        Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          padding: const EdgeInsets.all(24),
+          decoration: _glassmorphismDecoration(),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _sectionTitle('Contact & Social', Icons.connect_without_contact),
+              const SizedBox(height: 20),
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  childAspectRatio: 3,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                ),
+                itemCount: (_profileData['contact'] as List).length,
+                itemBuilder: (context, index) {
+                  final contact = _profileData['contact'][index];
+                  return _buildContactCard(contact);
+                },
+              ),
+            ],
           ),
-        ],
-      ),
+        ),
+        if (_isEditing)
+          Positioned(
+            top: 10,
+            right: 10,
+            child: IconButton(
+              icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+              onPressed: () => _editJsonField('contact', 'Contact'),
+            ),
+          ),
+      ],
     );
+  }
+
+  Future<void> _handleContactTap(Map<String, dynamic> contact) async {
+    final value = contact['value'];
+    final type = contact['type'].toString().toLowerCase();
+
+    Uri uri;
+    switch (type) {
+      case 'email':
+        uri = Uri(scheme: 'mailto', path: value);
+        break;
+      case 'phone':
+        uri = Uri(scheme: 'tel', path: value);
+        break;
+      case 'website':
+        uri = Uri.parse(value.startsWith('http') ? value : 'https://$value');
+        break;
+      case 'github':
+        final githubValue = value.startsWith('github.com/')
+            ? value.replaceFirst('github.com/', '')
+            : value;
+        uri = Uri.parse(
+          value.startsWith('http') ? value : 'https://github.com/$githubValue',
+        );
+        break;
+      case 'twitter':
+        final twitterValue = value.startsWith('twitter.com/')
+            ? value.replaceFirst('twitter.com/', '')
+            : value;
+        uri = Uri.parse(
+          value.startsWith('http')
+              ? value
+              : 'https://twitter.com/$twitterValue',
+        );
+        break;
+      default:
+        return;
+    }
+
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri, mode: LaunchMode.externalApplication);
+      } else {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Could not open $uri')));
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error: $e')));
+    }
   }
 
   Widget _buildContactCard(Map<String, dynamic> contact) {
-    return Container(
-      padding: EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: contact['color'].withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: contact['color'].withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Icon(contact['icon'], color: contact['color'], size: 20),
-          SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              contact['label'],
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
+    Color color;
+    switch (contact['type'].toString().toLowerCase()) {
+      case 'email':
+        color = Colors.red;
+        break;
+      case 'phone':
+        color = Colors.green;
+        break;
+      case 'website':
+        color = Colors.blue;
+        break;
+      case 'github':
+        color = Colors.purple;
+        break;
+      case 'twitter':
+        color = Colors.lightBlue;
+        break;
+      default:
+        color = Colors.white;
+    }
+
+    return InkWell(
+      borderRadius: BorderRadius.circular(12),
+      onTap: () => _handleContactTap(contact),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.1),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
+        child: Row(
+          children: [
+            Icon(_getContactIcon(contact['type']), color: color, size: 20),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                contact['value'],
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                ),
+                overflow: TextOverflow.fade,
               ),
-              overflow: TextOverflow.ellipsis,
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
+  IconData _getContactIcon(String type) {
+    switch (type.toLowerCase()) {
+      case 'email':
+        return Icons.email;
+      case 'phone':
+        return Icons.phone;
+      case 'website':
+        return Icons.language;
+      case 'github':
+        return Icons.code;
+      case 'twitter':
+        return Icons.mediation_sharp;
+      default:
+        return Icons.contact_page;
+    }
+  }
+
   Widget _buildFooter() {
-    return Container(
-      margin: EdgeInsets.all(20),
-      padding: EdgeInsets.all(24),
-      decoration: _glassmorphismDecoration(),
-      child: Column(
-        children: [
-          Text(
-            'Let\'s Build Something Amazing Together',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-            textAlign: TextAlign.center,
-          ),
-          SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: () {
-              HapticFeedback.mediumImpact();
-              // Add contact action
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: Colors.blue,
-              padding: EdgeInsets.symmetric(horizontal: 32, vertical: 16),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(30),
+    final footer = _profileData['footer'];
+
+    // Phone number extraction
+    String? phoneNumber;
+    try {
+      final phoneContact = (_profileData['contact'] as List).firstWhere(
+            (contact) => contact['type'].toString().toLowerCase() == 'phone',
+        orElse: () => {'value': ''},
+      );
+
+      phoneNumber = phoneContact['value'].toString().replaceAll(
+        RegExp(r'[^0-9+]'),
+        '',
+      );
+
+      if (phoneNumber.isNotEmpty && phoneNumber.startsWith('+91')) {
+        phoneNumber = phoneNumber.substring(3);
+      }
+    } catch (e) {
+      phoneNumber = null;
+    }
+
+    return Stack(
+      children: [
+        Container(
+          margin: const EdgeInsets.all(20),
+          padding: const EdgeInsets.all(24),
+          decoration: _glassmorphismDecoration(),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                footer['mainText'],
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
-            child: Text(
-              'Get In Touch',
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
+              const SizedBox(height: 16),
+              ElevatedButton(
+                onPressed: () async {
+                  HapticFeedback.mediumImpact();
+
+                  if (phoneNumber != null && phoneNumber.isNotEmpty) {
+                    final Uri whatsappUri = Uri.parse(
+                      'https://wa.me/$phoneNumber?text=${Uri.encodeComponent("Hello Qambar, I saw your developer profile and would like to connect with you.")}',
+                    );
+
+                    if (await canLaunchUrl(whatsappUri)) {
+                      await launchUrl(
+                        whatsappUri,
+                        mode: LaunchMode.externalApplication,
+                      );
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Could not launch WhatsApp'),
+                        ),
+                      );
+                    }
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('No phone number available'),
+                      ),
+                    );
+                  }
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(30),
+                  ),
+                ),
+                child: const Text(
+                  'Get In Touch',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
+              const SizedBox(height: 20),
+              Text(
+                footer['copyright'],
+                style: const TextStyle(color: Colors.white60, fontSize: 12),
+                textAlign: TextAlign.center,
+              ),
+              if (_appVersion.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  _appVersion,
+                  style: const TextStyle(color: Colors.white38, fontSize: 11),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ],
+          ),
+        ),
+        if (_isEditing)
+          Positioned(
+            top: 10,
+            right: 10,
+            child: IconButton(
+              icon: const Icon(Icons.edit, size: 16, color: Colors.white),
+              onPressed: () => _editJsonField('footer', 'Footer'),
             ),
           ),
-          SizedBox(height: 20),
-          Text(
-            '© 2024 Qambar Abbas. All rights reserved.',
-            style: TextStyle(color: Colors.white60, fontSize: 12),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
+      ],
     );
   }
 
@@ -817,23 +1334,69 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage>
             HapticFeedback.lightImpact();
             _scrollController.animateTo(
               0,
-              duration: Duration(milliseconds: 500),
+              duration: const Duration(milliseconds: 500),
               curve: Curves.easeInOut,
             );
           },
           backgroundColor: Colors.blue,
-          child: Icon(Icons.keyboard_arrow_up, color: Colors.white),
+          child: const Icon(Icons.keyboard_arrow_up, color: Colors.white),
           mini: true,
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         FloatingActionButton(
-          onPressed: () {
+          onPressed: () async {
             HapticFeedback.mediumImpact();
-            // Add share functionality
+            try {
+              final box = context.findRenderObject() as RenderBox?;
+              await Share.share(
+                'Check out '
+                    'Link To App'
+                    '\n'
+                    '${_profileData['name']}\'s developer profile:\n\n'
+                    '${_profileData['role']}\n'
+                    '${_profileData['location']}\n\n'
+                    'Skills: ${(_profileData['skills'] as List).map((s) => s['name']).join(', ')}\n\n'
+                    'Contact: ${(_profileData['contact'] as List).map((c) => '${c['type']}: ${c['value']}').join(', ')}',
+                sharePositionOrigin: box!.localToGlobal(Offset.zero) & box.size,
+              );
+            } catch (e) {
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text('Error sharing: $e')));
+            }
           },
           backgroundColor: Colors.purple,
-          child: Icon(Icons.share, color: Colors.white),
+          child: const Icon(Icons.share, color: Colors.white),
           mini: true,
+        ),
+        const SizedBox(height: 8),
+        if (_isEditing)
+          FloatingActionButton(
+            onPressed: () {
+              HapticFeedback.lightImpact();
+              setState(() {
+                _isEditing = false;
+                _loadSavedData(); // Reload saved data to cancel changes
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Changes discarded')),
+              );
+            },
+            backgroundColor: Colors.red,
+            foregroundColor: Colors.white,
+            mini: true,
+            child: const Icon(Icons.close),
+          ),
+        const SizedBox(height: 8),
+        FloatingActionButton(
+          onPressed: () {
+            HapticFeedback.lightImpact();
+            !_isEditing ? _promptPassword() : _save();
+          },
+          backgroundColor: _isEditing ? Colors.green : Colors.blue,
+          foregroundColor: Colors.white,
+          mini: true,
+          child: Icon(_isEditing ? Icons.save : Icons.edit),
         ),
       ],
     );
@@ -843,17 +1406,17 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage>
     return Row(
       children: [
         Container(
-          padding: EdgeInsets.all(8),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [Colors.blue, Colors.purple]),
+            gradient: const LinearGradient(colors: [Colors.blue, Colors.purple]),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Icon(icon, color: Colors.white, size: 20),
         ),
-        SizedBox(width: 12),
+        const SizedBox(width: 12),
         Text(
           title,
-          style: TextStyle(
+          style: const TextStyle(
             color: Colors.white,
             fontSize: 22,
             fontWeight: FontWeight.bold,
@@ -865,7 +1428,7 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage>
 
   Widget _buildTag(String text) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: Colors.blue.withOpacity(0.2),
         borderRadius: BorderRadius.circular(20),
@@ -873,7 +1436,7 @@ class _DeveloperProfilePageState extends State<DeveloperProfilePage>
       ),
       child: Text(
         text,
-        style: TextStyle(
+        style: const TextStyle(
           color: Colors.blue,
           fontSize: 12,
           fontWeight: FontWeight.w500,
